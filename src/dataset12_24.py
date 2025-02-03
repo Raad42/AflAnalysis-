@@ -48,7 +48,7 @@ def scrape_afl_ladder(yearStart, yearEnd):
                 individual_row = [row_index] + [data.text.strip() for data in row_data] + [round + 1] + [year]
                 df.loc[length] = individual_row
 
-        return df
+    return df
     
 def mergeDataset(mainDF, df):
     #Merge Home Team Data
@@ -69,6 +69,26 @@ def mergeDataset(mainDF, df):
     ).rename(columns={'Position': 'awayPosition', 'Points':'awayPoints','Percentage': 'awayPercentage'}) \
     .drop(columns=['Team'])
 
+    return mainDF
+
+def mergeBetDataset(mainDF, bettingDf):
+    # Strip whitespace from team names in bettingDf
+    bettingDf['HomeTeam'] = bettingDf['HomeTeam'].str.strip()
+    bettingDf['AwayTeam'] = bettingDf['AwayTeam'].str.strip()
+
+    # Merge Betting Data on 'HomeTeamScore', 'AwayTeamScore', 'HomeTeam', 'AwayTeam'
+    mainDF = mainDF.merge(
+        bettingDf[['Home Score', 'Away Score', 'HomeTeam', 'AwayTeam', 'Home Odds', 'Away Odds']],  # Include necessary columns
+        left_on=['HomeTeamScore', 'AwayTeamScore', 'HomeTeam', 'AwayTeam'],  # Match on 'HomeTeamScore', 'AwayTeamScore', 'HomeTeam', 'AwayTeam'
+        right_on=['Home Score', 'Away Score', 'HomeTeam', 'AwayTeam'],  # Match on 'Home Score', 'Away Score', 'HomeTeam', 'AwayTeam'
+        how='left'  # Left join to keep all rows from mainDF
+    ).drop(columns=['Home Score', 'Away Score'])  # Drop duplicate columns
+
+    return mainDF
+
+
+
+
 def clean_round(value):
     try:
         return int(value)  # Try converting to int
@@ -85,6 +105,7 @@ def clean_round(value):
             return -5
 
 
+#For 2012 - 2024
 df = scrape_afl_ladder(2012, 2024)
 mainDF = pd.read_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\external\games.csv')
 
@@ -115,9 +136,19 @@ df['Team'] = df['Team'].replace(team_name_mapping)
 mainDF['Round'] = mainDF['Round'].str.replace('R', '')
 mainDF['Round'] = mainDF['Round'].apply(clean_round)
 mainDF['Round'] = mainDF['Round'].astype(int) 
-
 #Merging Data
-mergeDataset(mainDF, df)
-
+mainDF = mergeDataset(mainDF, df)
 
 mainDF.to_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\raw\rawData12_24.csv', index=False)
+
+team_name_bet_mapping = {
+    'Brisbane' : 'Brisbane Lions',
+    'GWS Giants' : 'Greater Western Sydney'
+}
+bettingDf = pd.read_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\external\aflOdds.csv')
+bettingDf['HomeTeam'] = bettingDf['HomeTeam'].replace(team_name_bet_mapping)
+bettingDf['AwayTeam'] = bettingDf['AwayTeam'].replace(team_name_bet_mapping)
+
+mainDF = mergeBetDataset(mainDF,bettingDf)
+
+mainDF.to_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\raw\rawData12_24Complete.csv', index=False)
