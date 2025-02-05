@@ -231,6 +231,5 @@ mainDF['awayPoints'] = mainDF.groupby('AwayTeam')['awayPoints'].ffill()
 mainDF['HomeProbability'] = 1 / mainDF['Home Odds']
 mainDF['AwayProbability'] = 1 / mainDF['Away Odds']
 
-print(mainDF)
 output_file = os.path.join('data', 'processed', '12_23data.csv')
 mainDF.to_csv(output_file, index=False)
