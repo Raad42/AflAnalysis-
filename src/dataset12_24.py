@@ -1,8 +1,8 @@
-import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-
+import requests
+import os
 
 def scrape_afl_ladder(yearStart, yearEnd):
     #Initialise the dataframe 
@@ -104,10 +104,12 @@ def clean_round(value):
         if value == "EF":
             return -5
 
+# Construct a path using os.path.join, which will handle OS-specific path separators
+file_path = os.path.join('data', 'external', 'games.csv')
 
 #For 2012 - 2024
 df = scrape_afl_ladder(2012, 2024)
-mainDF = pd.read_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\external\games.csv')
+mainDF = pd.read_csv(file_path)
 
 #Setting both data frames to uniform names
 team_name_mapping = {
@@ -139,16 +141,21 @@ mainDF['Round'] = mainDF['Round'].astype(int)
 #Merging Data
 mainDF = mergeDataset(mainDF, df)
 
-mainDF.to_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\raw\rawData12_24.csv', index=False)
+output_path = os.path.join('data', 'raw', 'rawData12_24.csv')
+
+mainDF.to_csv(output_path, index=False)
 
 team_name_bet_mapping = {
     'Brisbane' : 'Brisbane Lions',
     'GWS Giants' : 'Greater Western Sydney'
 }
-bettingDf = pd.read_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\external\aflOdds.csv')
+
+file_path = os.path.join('data', 'external', 'aflOdds.csv')
+bettingDf = pd.read_csv(file_path)
+
 bettingDf['HomeTeam'] = bettingDf['HomeTeam'].replace(team_name_bet_mapping)
 bettingDf['AwayTeam'] = bettingDf['AwayTeam'].replace(team_name_bet_mapping)
 
 mainDF = mergeBetDataset(mainDF,bettingDf)
 
-mainDF.to_csv(r'C:\Users\raadr\OneDrive\Desktop\AflAnalysis-\data\raw\rawData12_24Complete.csv', index=False)
+mainDF.to_csv(output_path, index=False)
