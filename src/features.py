@@ -159,11 +159,41 @@ stadiums_to_remove = [
     'Bellerive Oval', 'Manuka Oval', 'Stadium Australia', 'Marrara Oval', 
     "Cazaly's Stadium", 'Eureka Stadium', 'Traeger Park', 'Wellington', 
     'Jiangwan Stadium', 'Norwood Oval', 'Blacktown', 'Riverway Stadium', 
-    'Summit Sports Park'
+    'Summit Sports Park', 'York Park'
 ]
 
 mainDF = mainDF[~mainDF['Venue'].isin(stadiums_to_remove)]
 
+# Define AFL rivalries
+rivalries = [
+    ('Collingwood', 'Essendon'),
+    ('Collingwood', 'Carlton'),
+    ('Adelaide', 'Port Adelaide'),
+    ('Richmond', 'Essendon'),
+    ('GWS', 'Sydney'),
+    ('Richmond', 'Carlton'),
+    ('Essendon', 'Carlton'),
+    ('Geelong', 'Hawthorn'),
+    ('Fremantle', 'West Coast'),
+    ('Collingwood', 'Richmond')
+]
+
+# Create a new column "Rivalry" to label rivalry games
+def add_rivalry_feature(mainDF, rivalries):
+    # Initialize the "Rivalry" column to False
+    mainDF['Rivalry'] = 0
+    
+    # Loop through each rivalry pair and label matches as part of the rivalry
+    for team1, team2 in rivalries:
+        # Find matches where either team1 or team2 is playing and mark them as rivalry
+        mask = ((mainDF['HomeTeam'] == team1) & (mainDF['AwayTeam'] == team2)) | \
+               ((mainDF['HomeTeam'] == team2) & (mainDF['AwayTeam'] == team1))
+        mainDF.loc[mask, 'Rivalry'] = 1
+    
+    return mainDF
+
+# Apply the rivalry feature to your mainDF
+mainDF = add_rivalry_feature(mainDF, rivalries)
 #Encoding
 team_name_mapping = {
     'Adelaide': 1,
@@ -192,12 +222,30 @@ mainDF['AwayTeamEncode'] = mainDF['AwayTeam'].map(team_name_mapping)
 venue_name_mapping = {
     'M.C.G.': 1, 'Carrara': 2, 'Subiaco': 3, 'Docklands': 4, 
     'Football Park': 5, 'Gabba': 6, 'S.C.G.': 7, 'Kardinia Park': 8, 
-    'York Park': 9, 'Sydney Showground': 10, 'Adelaide Oval': 11, 
-    'Perth Stadium': 12
+    'Sydney Showground': 9, 'Adelaide Oval': 10, 
+    'Perth Stadium': 11
 }
 
 mainDF['VenueEncode'] = mainDF['Venue'].map(venue_name_mapping)
 
+#Introduce Stadium Capacity
+stadium_capacity_mapping = {
+    'M.C.G.': 100024,
+    'Carrara': 25000,
+    'Subiaco': 42922,
+    'Docklands': 53359,
+    'Football Park': 51240,
+    'Gabba': 42000,
+    'S.C.G.': 48000,
+    'Kardinia Park': 40000,
+    'Sydney Showground': 25000,
+    'Adelaide Oval': 53583,
+    'Perth Stadium': 60000
+}
+
+mainDF['StadiumCapacity'] = mainDF['Venue'].map(stadium_capacity_mapping)
+
+#Create Day of the Week Variable
 mainDF['DayC'] = mainDF['Date'].dt.day_name()
 
 #Create Day Variable

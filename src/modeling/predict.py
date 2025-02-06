@@ -1,9 +1,34 @@
 import pandas as pd
+import numpy as np  # Added for RMSE and MAPE calculations
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 import seaborn as sns
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
 import os
+
+# === Add the AttendanceDNN class definition here ===
+class AttendanceDNN(nn.Module):
+    def __init__(self, input_size):
+        super(AttendanceDNN, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_size, 128),  # First hidden layer with 128 neurons
+            nn.ReLU(),
+            nn.Linear(128, 64),          # Second hidden layer with 64 neurons
+            nn.ReLU(),
+            nn.Linear(64, 32),           # Third hidden layer with 32 neurons
+            nn.ReLU(),
+            nn.Linear(32, 16),           # Fourth hidden layer with 16 neurons
+            nn.ReLU(),
+            nn.Linear(16, 1)             # Output layer
+        )
+
+    def forward(self, x):
+        return self.model(x)
+# === End AttendanceDNN definition ===
 
 # Load test data
 X_test = pd.read_csv('X_test.csv')
@@ -15,45 +40,88 @@ y_testCat = pd.read_csv('Y_testCat.csv').squeeze()
 y_test = pd.to_numeric(y_test, errors='coerce')
 y_testCat = pd.to_numeric(y_testCat, errors='coerce')
 
+# Convert DataFrames to tensors
+X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32)
+y_test_tensor = torch.tensor(y_test.values, dtype=torch.float32).view(-1, 1)
+
 categorical_features = ['Venue', 'HomeTeam', 'AwayTeam', 'DayC']
 X_testCat[categorical_features] = X_testCat[categorical_features].astype('category')
 cat_feature_indices = [X_testCat.columns.get_loc(col) for col in categorical_features]
+
 # Load models
 GBR_path = os.path.join('models', 'GradientBoosting.pkl')
 CAT_path = os.path.join('models', 'CatBoosting.pkl')
 LGBM_path = os.path.join('models', 'LightGBM.pkl')
+DNN_path = os.path.join('models', 'DNN.pkl')
 
 GBR_model = joblib.load(GBR_path)
 CAT_model = joblib.load(CAT_path)
 LGBM_model = joblib.load(LGBM_path)
+DNN_model = joblib.load(DNN_path)
 
-# Predict with each model
+# Predict with each non-DNN model
 y_predGBR = GBR_model.predict(X_test.to_numpy())
 y_predCAT = CAT_model.predict(X_testCat)
 y_predLGBM = LGBM_model.predict(X_testCat)
 
-# Define evaluation metrics function
+# DNN Model Prediction
+DNN_model.eval()
+with torch.no_grad():
+    # Get predictions from the DNN model using the test tensor
+    test_predictions = DNN_model(X_test_tensor)
+    
+    # Convert the predictions and actual values to NumPy arrays and flatten to 1D arrays
+    test_predictions = test_predictions.numpy().flatten()
+    y_test_actual = y_test_tensor.numpy().flatten()
+
+    # Calculate evaluation metrics for DNN: MSE, MAE, RMSE, and MAPE
+    mse_dnn = mean_squared_error(y_test_actual, test_predictions)
+    mae_dnn = mean_absolute_error(y_test_actual, test_predictions)
+    rmse_dnn = np.sqrt(mse_dnn)
+    mape_dnn = np.mean(np.abs((y_test_actual - test_predictions) / y_test_actual)) * 100
+    print(f"DNN Test MSE: {mse_dnn:.4f}")
+    print(f"DNN Test MAE: {mae_dnn:.4f}")
+    print(f"DNN Test RMSE: {rmse_dnn:.4f}")
+    print(f"DNN Test MAPE: {mape_dnn:.2f}%")
+
+    # Create a DataFrame with the actual and predicted attendance values for DNN
+    results_df = pd.DataFrame({
+        'Actual Attendance': y_test_actual,
+        'Predicted Attendance': test_predictions
+    })
+
+    # Display the first few rows of the DataFrame for inspection
+    print("\nActual vs Predicted Attendance (DNN):")
+    print(results_df.head())
+
+# Define evaluation metrics function that now returns RMSE and MAPE as well
 def calculate_metrics(y_true, y_pred):
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
+    rmse = np.sqrt(mse)
     r2 = r2_score(y_true, y_pred)
-    return mae, mse, r2
+    mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+    return mae, mse, rmse, r2, mape
 
 # Calculate metrics for each model
 metrics_GBR = calculate_metrics(y_test, y_predGBR)
 metrics_CAT = calculate_metrics(y_testCat, y_predCAT)
 metrics_LGBM = calculate_metrics(y_testCat, y_predLGBM)
+metrics_DNN = calculate_metrics(y_test_actual, test_predictions)
 
-# Create a DataFrame to store the metrics
+# Create a DataFrame to store the metrics for all models, including DNN
 metrics_df = pd.DataFrame({
-    'Model': ['Gradient Boosting', 'CatBoost', 'LightGBM'],
-    'MAE': [metrics_GBR[0], metrics_CAT[0], metrics_LGBM[0]],
-    'MSE': [metrics_GBR[1], metrics_CAT[1], metrics_LGBM[1]],
-    'R2': [metrics_GBR[2], metrics_CAT[2], metrics_LGBM[2]],
+    'Model': ['Gradient Boosting', 'CatBoost', 'LightGBM', 'DNN'],
+    'MAE': [metrics_GBR[0], metrics_CAT[0], metrics_LGBM[0], metrics_DNN[0]],
+    'MSE': [metrics_GBR[1], metrics_CAT[1], metrics_LGBM[1], metrics_DNN[1]],
+    'RMSE': [metrics_GBR[2], metrics_CAT[2], metrics_LGBM[2], metrics_DNN[2]],
+    'R2': [metrics_GBR[3], metrics_CAT[3], metrics_LGBM[3], metrics_DNN[3]],
+    'MAPE (%)': [metrics_GBR[4], metrics_CAT[4], metrics_LGBM[4], metrics_DNN[4]]
 })
 
 # Save the metrics to a CSV file
 metrics_df.to_csv('model_evaluation_metrics.csv', index=False)
+print("\nEvaluation metrics saved to model_evaluation_metrics.csv")
 
 # Save predictions vs actual values plots for each model
 def save_prediction_plot(y_true, y_pred, model_name):
@@ -65,7 +133,6 @@ def save_prediction_plot(y_true, y_pred, model_name):
     # Calculate min and max for the diagonal line
     y_min, y_max = min(y_true), max(y_true)
     if y_min == y_max:
-        # Adjust if there's no range in actual values
         y_min -= 1
         y_max += 1
 
@@ -80,7 +147,7 @@ def save_prediction_plot(y_true, y_pred, model_name):
     plt.tight_layout()
     
     plt.savefig(f"{model_name}_predictions_vs_actual.png")
-    plt.close()  # Close the figure
+    plt.close()
 
 # Save plots for each model
 save_prediction_plot(y_test, y_predGBR, 'Gradient_Boosting')
@@ -124,32 +191,32 @@ save_venue_colored_plot(y_testCat, y_predLGBM, venues, 'LightGBM')
 
 print("Graphs have been saved as PNG files.")
 
-eval_df = X_testCat.copy()
-eval_df['Actual'] = y_testCat.values
-eval_df['Predicted'] = y_predCAT
-
 # -------------------------------
 # Define a helper function to compute metrics for a given grouping column
 # -------------------------------
 def group_metrics(df, group_col):
     rows = []
-    # Group by the specified column (e.g., 'Venue', 'HomeTeam', or 'AwayTeam')
     for name, group in df.groupby(group_col):
-        # Only compute R2 if there is more than one sample; otherwise, set it to None.
         r2 = r2_score(group['Actual'], group['Predicted']) if len(group) > 1 else None
+        mae = mean_absolute_error(group['Actual'], group['Predicted'])
+        mse = mean_squared_error(group['Actual'], group['Predicted'])
+        rmse = np.sqrt(mse)
+        mape = np.mean(np.abs((group['Actual'] - group['Predicted']) / group['Actual'])) * 100
         rows.append({
             group_col: name,
             'Count': len(group),
-            'MAE': mean_absolute_error(group['Actual'], group['Predicted']),
-            'MSE': mean_squared_error(group['Actual'], group['Predicted']),
-            'R2': r2
+            'MAE': mae,
+            'MSE': mse,
+            'RMSE': rmse,
+            'R2': r2,
+            'MAPE (%)': mape
         })
     return pd.DataFrame(rows)
 
 # -------------------------------
 # Compute metrics for each venue, home team, and away team
 # -------------------------------
-venue_metrics = group_metrics(eval_df, 'Venue')
+venue_metrics = group_metrics(eval_df := (X_testCat.assign(Actual=y_testCat, Predicted=y_predCAT)), 'Venue')
 home_team_metrics = group_metrics(eval_df, 'HomeTeam')
 away_team_metrics = group_metrics(eval_df, 'AwayTeam')
 
