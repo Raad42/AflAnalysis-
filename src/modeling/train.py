@@ -20,7 +20,10 @@ import joblib
 file_path = os.path.join('data', 'processed', '12_23data.csv')
 mainDF = pd.read_csv(file_path)
 
+#get rid of finals games  
+mainDF = mainDF[mainDF.isFinal != 1]
 mainDF = mainDF.dropna() 
+
 
 X = mainDF[['Year', 'Round', 'MaxTemp', 'StadiumCapacity','Rivalry','Rainfall', 'VenueEncode', 'HomeTeamEncode', 'AwayTeamEncode', 'Day', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
 Y = mainDF['Attendance']

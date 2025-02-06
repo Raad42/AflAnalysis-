@@ -274,12 +274,32 @@ mainDF['awayPosition'] = mainDF.groupby('AwayTeam')['awayPosition'].ffill()
 mainDF['awayPercentage'] = mainDF.groupby('AwayTeam')['awayPercentage'].ffill()
 mainDF['awayPoints'] = mainDF.groupby('AwayTeam')['awayPoints'].ffill()
 
+mask_round1 = mainDF['Round'] == 1
+
+# For first round games, set previous game stats to default values:
+# For the Home Team:
+mainDF.loc[mask_round1, 'previous_game_home_position'] = 9
+mainDF.loc[mask_round1, 'previous_game_home_points'] = 0
+mainDF.loc[mask_round1, 'previous_game_home_percentage'] = 0
+
+# For the Away Team:
+mainDF.loc[mask_round1, 'previous_game_away_position'] = 9
+mainDF.loc[mask_round1, 'previous_game_away_points'] = 0
+mainDF.loc[mask_round1, 'previous_game_away_percentage'] = 0
+
 #Transform Betting Odds to Decimal Odds
 mainDF['HomeProbability'] = 1 / mainDF['Home Odds']
 mainDF['AwayProbability'] = 1 / mainDF['Away Odds']
 
+#Special Round 
+mainDF['isFinal'] = (mainDF['Round'] < 0).astype(int)
 
-#Special Round -> Rivalries 
+
+#Dealing with null values created by new features
+mainDF['previous_game_home_win_loss'] = mainDF['previous_game_home_win_loss'].fillna(-1)
+mainDF['previous_game_away_win_loss'] = mainDF['previous_game_away_win_loss'].fillna(-1)
+
+
 
 output_file = os.path.join('data', 'processed', '12_23data.csv')
 mainDF.to_csv(output_file, index=False)
