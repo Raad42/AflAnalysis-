@@ -17,7 +17,7 @@ mainDF = pd.read_csv(file_path)
 
 mainDF = mainDF.dropna() 
 
-X = mainDF[['Year', 'Round', 'MaxTemp', 'Rainfall', 'Venue', 'HomeTeam', 'AwayTeam', 'Day', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
+X = mainDF[['Year', 'Round', 'MaxTemp', 'Rainfall', 'VenueEncode', 'HomeTeamEncode', 'AwayTeamEncode', 'Day', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
 Y = mainDF['Attendance']
 
 X_train, X_test, y_train, y_test = train_test_split(X,Y, test_size=0.10, random_state=42)
@@ -62,7 +62,29 @@ GBR_Model = os.path.join('models', 'GradientBoosting.pkl')
 joblib.dump(best_model,GBR_Model)
 
 
-cbr = CatBoostRegressor(loss_function='RMSE', random_state=42)
+
+
+#Categorical Boosting
+categorical_features = ['Venue', 'HomeTeam', 'AwayTeam', 'DayC']
+numerical_features = ['Year', 'Round', 'MaxTemp', 'Rainfall', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position', 'previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']
+
+for col in categorical_features:
+    mainDF[col] = mainDF[col].astype('category')
+
+X = mainDF[['Year', 'Round', 'MaxTemp', 'Rainfall', 'Venue', 'HomeTeam', 'AwayTeam', 'DayC', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
+Y = mainDF['Attendance']
+
+X_train, X_test, y_train, y_test = train_test_split(X,Y, test_size=0.10, random_state=42)
+
+scaler = StandardScaler()
+X_train[numerical_features] = scaler.fit_transform(X_train[numerical_features])
+X_test[numerical_features] = scaler.transform(X_test[numerical_features])
+
+X_test.to_csv('X_testCat.csv', index=False)
+y_test.to_csv('y_testCat.csv', index=False) 
+
+
+cbr = CatBoostRegressor(loss_function='RMSE', random_state=42, cat_features=categorical_features)
 
 scorer = make_scorer(mean_squared_error, greater_is_better=False)
 
@@ -75,7 +97,7 @@ param_dist = {
 
 # Perform Randomized Search with cross-validation
 CAT_optim = RandomizedSearchCV(cbr, param_distributions=param_dist, n_iter=10, cv=5, scoring=scorer, n_jobs=-1, random_state=42)
-CAT_optim.fit(X_train, y_train)
+CAT_optim.fit(X_train, y_train, cat_features=categorical_features)
 
 Cat_Model_Path = os.path.join('models', 'CatBoosting.pkl')
 joblib.dump(CAT_optim, Cat_Model_Path)
@@ -83,7 +105,7 @@ joblib.dump(CAT_optim, Cat_Model_Path)
 import lightgbm as lgb
 from lightgbm import LGBMRegressor
 
-lgb_model = lgb.LGBMRegressor(objective='regression', metric='rmse', boosting_type='gbdt')
+lgb_model = lgb.LGBMRegressor(objective='regression', metric='rmse', boosting_type='gbdt', cat_features=categorical_features)
 
 # Define the parameter grid to search
 param_dist = {

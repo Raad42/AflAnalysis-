@@ -186,8 +186,8 @@ team_name_mapping = {
     'Western Bulldogs': 18
 }
 
-mainDF['HomeTeam'] = mainDF['HomeTeam'].map(team_name_mapping)
-mainDF['AwayTeam'] = mainDF['AwayTeam'].map(team_name_mapping)
+mainDF['HomeTeamEncode'] = mainDF['HomeTeam'].map(team_name_mapping)
+mainDF['AwayTeamEncode'] = mainDF['AwayTeam'].map(team_name_mapping)
 
 venue_name_mapping = {
     'M.C.G.': 1, 'Carrara': 2, 'Subiaco': 3, 'Docklands': 4, 
@@ -196,10 +196,9 @@ venue_name_mapping = {
     'Perth Stadium': 12
 }
 
-mainDF['Venue'] = mainDF['Venue'].map(venue_name_mapping)
+mainDF['VenueEncode'] = mainDF['Venue'].map(venue_name_mapping)
 
-# Dealing with Datetime Features
-mainDF['Date'] = pd.to_datetime(mainDF['Date'], errors='coerce')
+mainDF['DayC'] = mainDF['Date'].dt.day_name()
 
 #Create Day Variable
 mainDF['Day'] = mainDF['Date'].dt.dayofweek  # Extract the day of the week (Monday=0, Sunday=6)
@@ -230,6 +229,9 @@ mainDF['awayPoints'] = mainDF.groupby('AwayTeam')['awayPoints'].ffill()
 #Transform Betting Odds to Decimal Odds
 mainDF['HomeProbability'] = 1 / mainDF['Home Odds']
 mainDF['AwayProbability'] = 1 / mainDF['Away Odds']
+
+
+#Special Round -> Rivalries 
 
 output_file = os.path.join('data', 'processed', '12_23data.csv')
 mainDF.to_csv(output_file, index=False)
