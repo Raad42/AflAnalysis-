@@ -26,7 +26,7 @@ mainDF = mainDF.dropna()
 
 
 X = mainDF[['Year', 'Round', 'MaxTemp', 'StadiumCapacity','Rivalry','Rainfall', 'VenueEncode', 'HomeTeamEncode', 'AwayTeamEncode', 'Day', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
-Y = mainDF['Attendance']
+Y = mainDF['CapacityUtilisation']
 
 X_train, X_test, y_train, y_test = train_test_split(X,Y, test_size=0.10, random_state=42)
 
@@ -36,7 +36,7 @@ X_train = scaler.transform(X_train)
 X_test = scaler.transform(X_test)
 
 X_test_df = pd.DataFrame(X_test, columns=X.columns)
-y_test_df = pd.DataFrame(y_test, columns=['Attendance'])  
+y_test_df = pd.DataFrame(y_test, columns=['CapacityUtilisation'])  
 
 #make x test and y test csv
 X_test_df.to_csv('X_test.csv', index = False)
@@ -222,7 +222,7 @@ for col in categorical_features:
     mainDF[col] = mainDF[col].astype('category')
 
 X = mainDF[['Year', 'Round', 'MaxTemp', 'Rainfall', 'StadiumCapacity', 'Rivalry', 'Venue', 'HomeTeam', 'AwayTeam', 'DayC', 'MinutesSinceMidnight', 'HomeProbability', 'previous_game_home_position','previous_game_away_position', 'previous_game_home_win_loss', 'previous_game_away_win_loss']]
-Y = mainDF['Attendance']
+Y = mainDF['CapacityUtilisation']
 
 X_train, X_test, y_train, y_test = train_test_split(X,Y, test_size=0.10, random_state=42)
 

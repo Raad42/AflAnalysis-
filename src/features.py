@@ -299,7 +299,7 @@ mainDF['isFinal'] = (mainDF['Round'] < 0).astype(int)
 mainDF['previous_game_home_win_loss'] = mainDF['previous_game_home_win_loss'].fillna(-1)
 mainDF['previous_game_away_win_loss'] = mainDF['previous_game_away_win_loss'].fillna(-1)
 
-
+mainDF['CapacityUtilisation'] = mainDF['Attendance'] / mainDF['StadiumCapacity']
 
 output_file = os.path.join('data', 'processed', '12_23data.csv')
 mainDF.to_csv(output_file, index=False)
