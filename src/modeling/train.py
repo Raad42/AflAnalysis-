@@ -55,14 +55,14 @@ param_dist = {
 # Initialize the model
 model = GradientBoostingRegressor()
 
-# Perform Randomized Search with cross-validation
+# Perform Randomized Search
 random_search = RandomizedSearchCV(model, param_distributions=param_dist, n_iter=10, cv=5, scoring='neg_mean_squared_error', n_jobs=-1, random_state=42)
 random_search.fit(X_train, y_train)
 
-# Print the best hyperparameters for Random Search
+# Print the best hyperparameters
 print("Random Search - Best Hyperparameters:", random_search.best_params_)
 
-# Train the model with the best hyperparameters
+
 best_model = random_search.best_estimator_
 best_model.fit(X_train, y_train)
 
@@ -73,7 +73,7 @@ joblib.dump(best_model,GBR_Model)
 X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
 y_train_tensor = torch.tensor(y_train.values, dtype=torch.float32).view(-1, 1)
 
-# Create DataLoader for batch training
+
 train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
@@ -96,7 +96,7 @@ def objective(trial):
     dropout_rate = trial.suggest_uniform('dropout_rate', 0.1, 0.5)
     lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
     
-    # Define a simple DNN model using these hyperparameters
+   
     class CustomDNN(nn.Module):
         def __init__(self, input_size):
             super(CustomDNN, self).__init__()
@@ -118,8 +118,7 @@ def objective(trial):
     model = CustomDNN(input_size)
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    
-    # Train the model for a small number of epochs (for speed during search)
+  
     epochs = 20
     for epoch in range(epochs):
         model.train()
@@ -130,7 +129,6 @@ def objective(trial):
             loss.backward()
             optimizer.step()
     
-    # Evaluate on the validation set
     model.eval()
     total_loss = 0.0
     total_samples = 0
@@ -143,14 +141,13 @@ def objective(trial):
     avg_val_loss = total_loss / total_samples
     return avg_val_loss
 
-# Run the Optuna study
+
 study = optuna.create_study(direction="minimize")
 study.optimize(objective, n_trials=50)
 
 print("Best hyperparameters:", study.best_trial.params)
 
-# -------------------------------
-# Train the final DNN model using the best hyperparameters on the entire training data (train + validation)
+
 best_params = study.best_trial.params
 n_units1 = best_params['n_units1']
 n_units2 = best_params['n_units2']
@@ -179,7 +176,7 @@ final_model = AttendanceDNN(input_size)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(final_model.parameters(), lr=lr)
 
-# Combine the training and validation sets for final training
+
 full_dataset = TensorDataset(torch.cat([train_data, val_data]), torch.cat([train_labels, val_labels]))
 full_loader = DataLoader(full_dataset, batch_size=32, shuffle=True)
 
@@ -210,7 +207,7 @@ plt.title('Final Training Loss Curve')
 plt.legend()
 plt.show()
 
-# Save the optimized DNN model
+
 DNN_Model_path = os.path.join('models', 'DNN.pkl')
 joblib.dump(final_model, DNN_Model_path)
 
@@ -238,14 +235,14 @@ cbr = CatBoostRegressor(loss_function='RMSE', random_state=42, cat_features=cate
 
 scorer = make_scorer(mean_squared_error, greater_is_better=False)
 
-# Define the parameter distributions for Random Search
+
 param_dist = {
     'iterations': [100, 200],
     'learning_rate': [0.01, 0.1],
     'depth': [3, 6]
 }
 
-# Perform Randomized Search with cross-validation
+
 CAT_optim = RandomizedSearchCV(cbr, param_distributions=param_dist, n_iter=10, cv=5, scoring=scorer, n_jobs=-1, random_state=42)
 CAT_optim.fit(X_train, y_train, cat_features=categorical_features)
 
@@ -257,7 +254,6 @@ from lightgbm import LGBMRegressor
 
 lgb_model = lgb.LGBMRegressor(objective='regression', metric='rmse', boosting_type='gbdt', cat_features=categorical_features)
 
-# Define the parameter grid to search
 param_dist = {
     'num_leaves': np.arange(8, 64),
     'learning_rate': np.logspace(-4, -1, 10),
@@ -271,11 +267,11 @@ param_dist = {
 
 # Define the RandomizedSearchCV
 LGB_optim = RandomizedSearchCV(lgb_model, param_distributions=param_dist, 
-                                   n_iter=50,  # Number of parameter combinations to try
-                                   scoring='neg_root_mean_squared_error',  # RMSE is the score metric
-                                   cv=3,  # Cross-validation folds
-                                   verbose=2,  # Prints the progress
-                                   n_jobs=-1,  # Uses all cores
+                                   n_iter=50,  
+                                   scoring='neg_root_mean_squared_error',
+                                   cv=3,  
+                                   verbose=2,  
+                                   n_jobs=-1,  
                                    random_state=42)
 
 

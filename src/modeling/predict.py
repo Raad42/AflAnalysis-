@@ -1,5 +1,5 @@
 import pandas as pd
-import numpy as np  # Added for RMSE and MAPE calculations
+import numpy as np  
 import joblib
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import os
 
-# === Add the AttendanceDNN class definition here ===
+
 class AttendanceDNN(nn.Module):
     def __init__(self, input_size):
         super(AttendanceDNN, self).__init__()
@@ -28,7 +28,6 @@ class AttendanceDNN(nn.Module):
 
     def forward(self, x):
         return self.model(x)
-# === End AttendanceDNN definition ===
 
 # Load test data
 X_test = pd.read_csv('X_test.csv')
@@ -67,10 +66,10 @@ y_predLGBM = LGBM_model.predict(X_testCat)
 # DNN Model Prediction
 DNN_model.eval()
 with torch.no_grad():
-    # Get predictions from the DNN model using the test tensor
+    
     test_predictions = DNN_model(X_test_tensor)
     
-    # Convert the predictions and actual values to NumPy arrays and flatten to 1D arrays
+    
     test_predictions = test_predictions.numpy().flatten()
     y_test_actual = y_test_tensor.numpy().flatten()
 
@@ -84,17 +83,15 @@ with torch.no_grad():
     print(f"DNN Test RMSE: {rmse_dnn:.4f}")
     print(f"DNN Test MAPE: {mape_dnn:.2f}%")
 
-    # Create a DataFrame with the actual and predicted attendance values for DNN
     results_df = pd.DataFrame({
         'Actual Attendance': y_test_actual,
         'Predicted Attendance': test_predictions
     })
 
-    # Display the first few rows of the DataFrame for inspection
     print("\nActual vs Predicted Attendance (DNN):")
     print(results_df.head())
 
-# Define evaluation metrics function that now returns RMSE and MAPE as well
+
 def calculate_metrics(y_true, y_pred):
     mae = mean_absolute_error(y_true, y_pred)
     mse = mean_squared_error(y_true, y_pred)
@@ -103,13 +100,13 @@ def calculate_metrics(y_true, y_pred):
     mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
     return mae, mse, rmse, r2, mape
 
-# Calculate metrics for each model
+
 metrics_GBR = calculate_metrics(y_test, y_predGBR)
 metrics_CAT = calculate_metrics(y_testCat, y_predCAT)
 metrics_LGBM = calculate_metrics(y_testCat, y_predLGBM)
 metrics_DNN = calculate_metrics(y_test_actual, test_predictions)
 
-# Create a DataFrame to store the metrics for all models, including DNN
+
 metrics_df = pd.DataFrame({
     'Model': ['Gradient Boosting', 'CatBoost', 'LightGBM', 'DNN'],
     'MAE': [metrics_GBR[0], metrics_CAT[0], metrics_LGBM[0], metrics_DNN[0]],
@@ -127,16 +124,12 @@ print("\nEvaluation metrics saved to model_evaluation_metrics.csv")
 def save_prediction_plot(y_true, y_pred, model_name):
     plt.figure(figsize=(8, 6))
     
-    # Plot predictions vs. actual values
     plt.scatter(y_true, y_pred, alpha=0.6, color="blue", label="Predictions")
     
-    # Calculate min and max for the diagonal line
     y_min, y_max = min(y_true), max(y_true)
     if y_min == y_max:
         y_min -= 1
         y_max += 1
-
-    # Plot the perfect prediction line
     plt.plot([y_min, y_max], [y_min, y_max], color='red', linestyle='--', label="Ideal")
     
     plt.xlabel("Actual")
@@ -156,19 +149,15 @@ save_prediction_plot(y_testCat, y_predLGBM, 'LightGBM')
 
 def save_venue_colored_plot(y_true, y_pred, venues, model_name):
     plt.figure(figsize=(8, 6))
-    
-    # Create a DataFrame for plotting
     plot_df = pd.DataFrame({
         'Actual': y_true,
         'Predicted': y_pred,
         'Venue': venues
     })
     
-    # Use seaborn to scatter plot with venue as hue
     sns.scatterplot(data=plot_df, x='Actual', y='Predicted', hue='Venue',
                     palette='viridis', alpha=0.7)
     
-    # Draw the ideal (diagonal) line
     y_min, y_max = plot_df['Actual'].min(), plot_df['Actual'].max()
     if y_min == y_max:
         y_min -= 1
@@ -191,9 +180,6 @@ save_venue_colored_plot(y_testCat, y_predLGBM, venues, 'LightGBM')
 
 print("Graphs have been saved as PNG files.")
 
-# -------------------------------
-# Define a helper function to compute metrics for a given grouping column
-# -------------------------------
 def group_metrics(df, group_col):
     rows = []
     for name, group in df.groupby(group_col):
@@ -213,9 +199,7 @@ def group_metrics(df, group_col):
         })
     return pd.DataFrame(rows)
 
-# -------------------------------
-# Compute metrics for each venue, home team, and away team
-# -------------------------------
+
 venue_metrics = group_metrics(eval_df := (X_testCat.assign(Actual=y_testCat, Predicted=y_predCAT)), 'Venue')
 home_team_metrics = group_metrics(eval_df, 'HomeTeam')
 away_team_metrics = group_metrics(eval_df, 'AwayTeam')
